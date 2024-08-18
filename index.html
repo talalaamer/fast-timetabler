@@ -150,7 +150,21 @@
                 console.error(`Could not find the time slot for cell at ${cell.col} ${cell.row} ${cell.value}`)
             }
 
-            return { name: time ? cell.value : cell.value.slice(0, cell.value.indexOf(')') + 1), startTime: time ? time.match(/(\d+):(\d+)/g)[0] : cell.value.match(/(\d+):(\d+)/g)[0], endTime: time ? time.match(/(\d+):(\d+)/g)[1] : cell.value.match(/(\d+):(\d+)/g)[1], room: room }
+            let endTime;
+            let currentCell = cell
+
+            while (true) {
+                if (currentCell && cell.worksheet?.getCell(currentCell.row, parseInt(currentCell.col) + 1).value == currentCell.value && currentCell.value) currentCell = cell.worksheet?.getCell(currentCell.row, parseInt(currentCell.col) + 1)
+                else break;
+            }
+
+            try {
+                if (!currentCell.value.includes(':')) endTime = times.find(timeCell => timeCell.col == currentCell.col).value
+            } catch (error) {
+                console.error(`Could not find the end time slot for cell at ${currentCell.col} ${currentCell.row} ${currentCell.value}`)
+            }
+
+            return { name: time ? cell.value : cell.value.slice(0, cell.value.indexOf(')') + 1), startTime: time ? time.match(/(\d+):(\d+)/g)[0] : cell.value.match(/(\d+):(\d+)/g)[0], endTime: endTime ? endTime.match(/(\d+):(\d+)/g)[1] : (time ? time.match(/(\d+):(\d+)/g)[1] : cell.value.match(/(\d+):(\d+)/g)[1]), room: room }
         }
 
         function getAllCells(row) {
