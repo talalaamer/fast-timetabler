@@ -7,22 +7,18 @@
     <title>FAST TimeTabler</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"
-        integrity="sha512-dlPw+ytv/6JyepmelABrgeYgHI0O+frEwgfnPdXDTOIZz+eDgfW07QXG02/O8COfivBdGNINy+Vex+lYmJ5rxw=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.5.0/luxon.min.js"
         integrity="sha512-SN7iwxiJt9nFKiLayg3NjLItXPwRfBr4SQSIugMeBFrD4lIFJe1Z/exkTZYAg3Ul+AfZEGws2PQ+xSoaWfxRQQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 
 <body>
     <div class="container mt-5">
         <form class="row g-3 justify-content-center" id="form">
-            <input class="form-control mb-3" type="file" id="fileInput" accept=".xlsx, .xls">
             <div class="col-auto">
-                <select class="form-select mt-2" id="degreeSelect">
+                <select class="form-select mt-2" id="degreeSelect" disabled>
                     <option selected>Choose Degree</option>
                 </select>
             </div>
@@ -34,10 +30,47 @@
                 <button type="submit" class="btn btn-primary mt-2" id="generateTable">Generate Timetable</button>
             </div>
         </form>
+        <div class="position-absolute top-50 start-50 translate-middle">
+            <div id="progressSpinner" class="spinner-border" style="width: 10rem; height: 10rem; border-width:1rem;"
+                role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
         <div id="htmlOutput"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="position-fixed bottom-0 end-0 p-3 mt-1">
+        <div class="toast align-items-center text-bg-primary border-0" id="fetchToast" role="alert"
+            aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    Fetching data
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
+        <div class="toast align-items-center bg-danger text-white border-0 mt-1" id="errorToast" role="alert"
+            aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    An error occurred while fetching data. Please check your connection and try again.
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
+        <div class="toast align-items-center bg-success text-white border-0 mt-1" id="passToast" role="alert"
+            aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    Data fetched successfully!
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
 
     <script type="module">
 
@@ -45,72 +78,62 @@
         const { DateTime } = luxon;
 
         let globalWorkbook;
-        let globalCourses;
+        let globalCourses = [];
 
-        document.getElementById('fileInput').addEventListener('change', function (event) {
+        const API_KEY = 'AIzaSyBBjNimiD3qorayDbeB11a3INt1q3PMtxU'; // Too lazy to setup a way to hide this so it's restricted to only accept requests from this website
+        const SPREADSHEET_ID = '1XA76yuFM_4mtkQW__2fryUBMe5EZ6XMWtBHxylhV6k8';
 
-            const file = event.target.files[0];
-            if (!file) return;
+        const fetchToast = new bootstrap.Toast(document.getElementById('fetchToast'));
+        const errorToast = new bootstrap.Toast(document.getElementById('errorToast'));
+        const passToast = new bootstrap.Toast(document.getElementById('passToast'));
 
-            console.log('File selected:', file.name);
+        const spinner = document.getElementById('progressSpinner');
 
-            const reader = new FileReader();
-            const degreeSelect = document.getElementById('degreeSelect')
+        const degreeSelect = document.getElementById('degreeSelect');
 
-            reader.onload = async function (e) {
+        fetchToast.show();
 
-                try {
+        const data = await fetchData();
 
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = new ExcelJS.Workbook();
-                    await workbook.xlsx.load(data);
-
-                    globalWorkbook = workbook;
-
-                    const sheet = workbook.worksheets[1]
-                    const courseCells = removeDuplicateCellValues(sheet.getRows(1, 4).map(getAllCells).flat().filter(cell => parseInt(cell.col) > 4)).filter(cell => cell.value);
-
-                    globalCourses = courseCells;
-
-                    courseCells.forEach(cell => {
-                        if (Array.from(degreeSelect.options).some(option => option.text === cell.value)) return;
-                        const option = document.createElement('option')
-                        option.value = cell.value
-                        option.textContent = cell.value
-                        degreeSelect.appendChild(option)
-                    })
-
-                } catch (error) { console.error('Error processing file:', error); }
-            };
-
-            reader.onerror = function (error) {
-                console.error('FileReader error:', error);
-            };
-
-            reader.readAsArrayBuffer(file);
-        })
+        data.sheets[1].data[0].rowData.slice(0, 4).forEach(object => {
+            object.values.slice(2).forEach(value => {
+                if (!value.userEnteredValue) return;
+                const course = value.userEnteredValue.stringValue;
+                if (!course.includes(')')) return;
+                globalCourses.push({ name: course, color: value.effectiveFormat?.backgroundColor });
+                const option = document.createElement('option')
+                option.value = course
+                option.textContent = course
+                degreeSelect.appendChild(option)
+            })
+        });
 
         document.getElementById('generateTable').addEventListener('click', function (event) {
 
             event.preventDefault();
 
             const sortedClasses = [];
-            const chosenCourse = globalCourses.map(cell => cell.value).indexOf(document.getElementById('degreeSelect').value);
-            const classAndSection = document.getElementById('classAndSectionInput').value;
+            const chosenCourse = globalCourses.map(course => course.name).indexOf(document.getElementById('degreeSelect').value);
+            const classAndSection = document.getElementById('classAndSectionInput').value.toLowerCase();
 
-            console.log(classAndSection)
+            let finalData = [];
 
-            for (const sheet of globalWorkbook.worksheets.slice(1)) {
+            for (const sheet of data.sheets.slice(1)) {
 
-                const day = sheet.getCell('A1').value;
-                const classCells = removeDuplicateCellValues(sheet.getRows(6, sheet.actualRowCount).map(getAllCells).flat().filter(cell => parseInt(cell.col) > 1)).filter(cell => cell.value)
-                const courseColor = globalCourses[chosenCourse].fill.bgColor.argb;
-                const times = getAllCells(sheet.getRow(5)).filter(cell => parseInt(cell.col) > 1)
-                const rooms = getAllCells(sheet.getColumn(1)).filter(cell => parseInt(cell.row) > 5)
+                const day = sheet.data[0].rowData[0].values[0].userEnteredValue.stringValue;
 
-                const chosenClasses = classCells.filter(cell => { return cell.fill?.bgColor?.argb == courseColor && cell.value.toLowerCase().includes(classAndSection.toLowerCase()) })
+                finalData.push(...sheet.data[0].rowData.map(data => data.values).map(arr => arr.map(value => value.userEnteredValue ? value.userEnteredValue.stringValue : '')));
+                const allCells = sheet.data[0].rowData.map(data => data.values).map((arr, rowIndex) => arr.map((value, index) => ({ name: value.userEnteredValue ? value.userEnteredValue.stringValue : '', color: value.effectiveFormat?.backgroundColor, column: index, row: rowIndex })));
 
-                sortedClasses.push(...chosenClasses.flatMap(cell => extractInfo(cell, rooms, times)).map(info => { info.day = day; return info }).sort((a, b) => {
+                const course = globalCourses[chosenCourse];
+                const classCells = allCells.slice(5).flat().filter(cell => cell.name && matchColor(cell, course) && cell.name.toLowerCase().includes(classAndSection));
+
+                const times = allCells[4].filter(cell => cell.name && cell.column > 0);
+                const rooms = allCells.slice(5).map(arr => arr[0]).flat();
+                const labRow = rooms.findIndex(cell => cell.name == 'Lab');
+                const labTimes = allCells[rooms[labRow].row].filter(cell => cell.name && cell.column > 0);
+
+                sortedClasses.push(...classCells.flatMap(cell => extractInfo(cell, rooms, times, labTimes, labRow)).map(info => { info.day = day; return info }).sort((a, b) => {
                     let startTimeA = DateTime.fromFormat(a.startTime, 'HH:mm');
                     let startTimeB = DateTime.fromFormat(b.startTime, 'HH:mm');
                     if (startTimeA < DateTime.fromFormat('8:30', 'H:mm')) startTimeA = startTimeA.plus({ hours: 12 });
@@ -126,62 +149,70 @@
             if (!table) return;
             table.classList.add('table');
             table.classList.add('table-hover');
-            table.classList.add('table-bordered')
+            table.classList.add('table-bordered');
+
+            let haveHighlighted = false;
+            let previousText = '';
+
+            table.firstElementChild.classList.add('table-active');
+
+            for (let i = 0; i < table.lastElementChild.children.length; i++) {
+                const child = table.lastElementChild.children.item(i);
+                if (!previousText) previousText = child.firstElementChild.innerHTML
+                if (previousText != child.firstElementChild.innerHTML) {
+                    if (!haveHighlighted) { child.classList.add('table-active'); haveHighlighted = true }
+                    else haveHighlighted = false
+                } else {
+                    if (haveHighlighted) child.classList.add('table-active');
+                }
+                previousText = child.firstElementChild.innerHTML;
+            }
 
             document.getElementById('form').classList.add('d-none')
 
         })
 
-        function extractInfo(cell, rooms, times) {
+        async function fetchData() {
+            try {
+                const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?includeGridData=true&key=${API_KEY}`);
+                const data = await response.json();
+                if (data.error) { console.error('Error fetching data:', data.error.message); errorToast.show(); return }
+                passToast.show();
+                spinner.classList.add('d-none');
+                document.getElementById('degreeSelect').disabled = false;
+                return data;
+            } catch (error) {
+                errorToast.show()
+                console.error('Error fetching data: ', error)
+            }
+        }
 
-            cell.value = cell.value.trim()
+        function matchColor(cell1, cell2) {
+            return cell1.color.red == cell2.color.red && cell1.color.blue == cell2.color.blue && cell1.color.green == cell2.color.green
+        }
 
-            if (cell.value.includes('     ')) {
-                return cell.value.split('     ')
-                    .map(info => extractInfo({ ...cell, value: info, row: cell.row, col: cell.col }, rooms, times))
+        function extractInfo(cell, rooms, times, labTimes, labIndex) {
+
+            cell.name = cell.name.trim()
+
+            if (cell.name.includes('     ')) {
+                return cell.name.split('     ')
+                    .map(info => extractInfo({ name: info, row: cell.row, column: cell.column }, rooms, times, labTimes, labIndex))
             }
 
-            const room = rooms.find(roomCell => roomCell.row == cell.row).value
+            const room = rooms.find(roomCell => roomCell.row == cell.row).name
 
             let time;
             try {
-                if (!cell.value.includes(':')) time = times.find(timeCell => timeCell.col == cell.col).value
+                if (!cell.name.includes(':')) {
+                    if (cell.row < labIndex) time = times.find(timeCell => timeCell.column == cell.column).name
+                    else time = labTimes.find(timeCell => timeCell.column == cell.column).name
+                }
             } catch (error) {
-                console.error(`Could not find the time slot for cell at ${cell.col} ${cell.row} ${cell.value}`)
+                console.error(`Could not find the time slot for cell at ${cell.column} ${cell.row} ${cell.name}`)
             }
 
-            let endTime;
-            let currentCell = cell
-
-            while (true) {
-                if (currentCell && cell.worksheet?.getCell(currentCell.row, parseInt(currentCell.col) + 1).value == currentCell.value && currentCell.value) currentCell = cell.worksheet?.getCell(currentCell.row, parseInt(currentCell.col) + 1)
-                else break;
-            }
-
-            try {
-                if (!currentCell.value.includes(':')) endTime = times.find(timeCell => timeCell.col == currentCell.col).value
-            } catch (error) {
-                console.error(`Could not find the end time slot for cell at ${currentCell.col} ${currentCell.row} ${currentCell.value}`)
-            }
-
-            return { name: time ? cell.value : cell.value.slice(0, cell.value.indexOf(')') + 1), startTime: time ? time.match(/(\d+):(\d+)/g)[0] : cell.value.match(/(\d+):(\d+)/g)[0], endTime: endTime ? endTime.match(/(\d+):(\d+)/g)[1] : (time ? time.match(/(\d+):(\d+)/g)[1] : cell.value.match(/(\d+):(\d+)/g)[1]), room: room }
-        }
-
-        function getAllCells(row) {
-            const cells = [];
-            row.eachCell(cell => cells.push(cell));
-            return cells
-        }
-
-        function removeDuplicateCellValues(cellArray) {
-            const seenValues = new Set();
-            const uniqueCells = [];
-            cellArray.forEach(cell => {
-                if (seenValues.has(cell.value)) return;
-                seenValues.add(cell.value)
-                uniqueCells.push(cell)
-            })
-            return uniqueCells;
+            return { name: time ? cell.name : cell.name.slice(0, cell.name.indexOf(')') + 1), startTime: time ? time.match(/(\d+):(\d+)/g)[0] : cell.name.match(/(\d+):(\d+)/g)[0], endTime: (time ? time.match(/(\d+):(\d+)/g)[1] : cell.name.match(/(\d+):(\d+)/g)[1]), room: room }
         }
 
     </script>
