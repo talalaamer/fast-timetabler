@@ -122,6 +122,8 @@
 
                 const day = sheet.data[0].rowData[0].values[0].userEnteredValue.stringValue;
 
+		console.log(day);
+
                 finalData.push(...sheet.data[0].rowData.map(data => data.values).map(arr => arr.map(value => value.userEnteredValue ? value.userEnteredValue.stringValue : '')));
                 const allCells = sheet.data[0].rowData.map(data => data.values).map((arr, rowIndex) => arr.map((value, index) => ({ name: value.userEnteredValue ? value.userEnteredValue.stringValue : '', color: value.effectiveFormat?.backgroundColor, column: index, row: rowIndex })));
 
@@ -206,10 +208,13 @@
             try {
                 if (!cell.name.includes(':')) {
                     if (cell.row < labIndex) time = times.find(timeCell => timeCell.column == cell.column).name
-                    else time = labTimes.find(timeCell => timeCell.column == cell.column).name
+                    else {
+			time = labTimes.find(timeCell => timeCell.column == cell.column)?.name
+			if (!time) time = times.find(timeCell => timeCell.column == cell.column).name
+		    }
                 }
             } catch (error) {
-                console.error(`Could not find the time slot for cell at ${cell.column} ${cell.row} ${cell.name}`)
+                console.warn(`Could not find the time slot for cell at ${cell.column} ${cell.row} ${cell.name}`)
             }
 
             return { name: time ? cell.name : cell.name.slice(0, cell.name.indexOf(')') + 1), startTime: time ? time.match(/(\d+):(\d+)/g)[0] : cell.name.match(/(\d+):(\d+)/g)[0], endTime: (time ? time.match(/(\d+):(\d+)/g)[1] : cell.name.match(/(\d+):(\d+)/g)[1]), room: room }
