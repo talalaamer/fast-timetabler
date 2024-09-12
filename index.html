@@ -214,7 +214,7 @@
 		    }
                 }
             } catch (error) {
-                console.warn(`Could not find the time slot for cell at ${cell.column} ${cell.row} ${cell.name}`)
+                console.error(`Could not find the time slot for cell at ${String.fromCharCode(cell.column + 65)} ${cell.row + 1} ${cell.name}`)
             }
 
             return { name: time ? cell.name : cell.name.slice(0, cell.name.indexOf(')') + 1), startTime: time ? time.match(/(\d+):(\d+)/g)[0] : cell.name.match(/(\d+):(\d+)/g)[0], endTime: (time ? time.match(/(\d+):(\d+)/g)[1] : cell.name.match(/(\d+):(\d+)/g)[1]), room: room }
