@@ -2,8 +2,7 @@ self.addEventListener('install', event => {
     event.waitUntil(
         caches.open('app-cache').then(cache => {
             return cache.addAll([
-                '/',
-                '/index.html',
+                'index.html',
                 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
                 'https://cdnjs.cloudflare.com/ajax/libs/luxon/3.5.0/luxon.min.js',
                 'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
