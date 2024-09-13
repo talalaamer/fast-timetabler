@@ -8,22 +8,12 @@
     <link rel="manifest" href="./manifest.json">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.5.0/luxon.min.js"
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.5.0/luxon.min.js" defer
         integrity="sha512-SN7iwxiJt9nFKiLayg3NjLItXPwRfBr4SQSIugMeBFrD4lIFJe1Z/exkTZYAg3Ul+AfZEGws2PQ+xSoaWfxRQQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
-
-<script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('service-worker.js')
-                .then(reg => console.log('Service Worker registered:', reg))
-                .catch(err => console.log('Service Worker registration failed:', err));
-        });
-    }
-</script>
 
 <body>
     <div class="container mt-5">
@@ -104,86 +94,88 @@
 
         fetchToast.show();
 
-        const data = await fetchData();
+        fetchData().then(data => {
 
-        data.sheets[1].data[0].rowData.slice(0, 4).forEach(object => {
-            object.values.slice(2).forEach(value => {
-                if (!value.userEnteredValue) return;
-                const course = value.userEnteredValue.stringValue;
-                if (!course.includes(')')) return;
-                globalCourses.push({ name: course, color: value.effectiveFormat?.backgroundColor });
-                const option = document.createElement('option')
-                option.value = course
-                option.textContent = course
-                degreeSelect.appendChild(option)
-            })
-        });
+            data.sheets[1].data[0].rowData.slice(0, 4).forEach(object => {
+                object.values.slice(2).forEach(value => {
+                    if (!value.userEnteredValue) return;
+                    const course = value.userEnteredValue.stringValue;
+                    if (!course.includes(')')) return;
+                    globalCourses.push({ name: course, color: value.effectiveFormat?.backgroundColor });
+                    const option = document.createElement('option')
+                    option.value = course
+                    option.textContent = course
+                    degreeSelect.appendChild(option)
+                })
+            });
 
-        document.getElementById('generateTable').addEventListener('click', function (event) {
+            document.getElementById('generateTable').addEventListener('click', function (event) {
 
-            event.preventDefault();
+                event.preventDefault();
 
-            const sortedClasses = [];
-            const chosenCourse = globalCourses.map(course => course.name).indexOf(document.getElementById('degreeSelect').value);
-            const classAndSection = document.getElementById('classAndSectionInput').value.toLowerCase();
+                const sortedClasses = [];
+                const chosenCourse = globalCourses.map(course => course.name).indexOf(document.getElementById('degreeSelect').value);
+                const classAndSection = document.getElementById('classAndSectionInput').value.toLowerCase();
 
-            let finalData = [];
+                let finalData = [];
 
-            for (const sheet of data.sheets.slice(1)) {
+                for (const sheet of data.sheets.slice(1)) {
 
-                const day = sheet.data[0].rowData[0].values[0].userEnteredValue.stringValue;
+                    const day = sheet.data[0].rowData[0].values[0].userEnteredValue.stringValue;
 
-                console.log(day);
+                    console.log(day);
 
-                finalData.push(...sheet.data[0].rowData.map(data => data.values).map(arr => arr.map(value => value.userEnteredValue ? value.userEnteredValue.stringValue : '')));
-                const allCells = sheet.data[0].rowData.map(data => data.values).map((arr, rowIndex) => arr.map((value, index) => ({ name: value.userEnteredValue ? value.userEnteredValue.stringValue : '', color: value.effectiveFormat?.backgroundColor, column: index, row: rowIndex })));
+                    finalData.push(...sheet.data[0].rowData.map(data => data.values).map(arr => arr.map(value => value.userEnteredValue ? value.userEnteredValue.stringValue : '')));
+                    const allCells = sheet.data[0].rowData.map(data => data.values).map((arr, rowIndex) => arr.map((value, index) => ({ name: value.userEnteredValue ? value.userEnteredValue.stringValue : '', color: value.effectiveFormat?.backgroundColor, column: index, row: rowIndex })));
 
-                const course = globalCourses[chosenCourse];
-                const classCells = allCells.slice(5).flat().filter(cell => cell.name && matchColor(cell, course) && cell.name.toLowerCase().includes(classAndSection));
+                    const course = globalCourses[chosenCourse];
+                    const classCells = allCells.slice(5).flat().filter(cell => cell.name && matchColor(cell, course) && cell.name.toLowerCase().includes(classAndSection));
 
-                const times = allCells[4].filter(cell => cell.name && cell.column > 0);
-                const rooms = allCells.slice(5).map(arr => arr[0]).flat();
-                const labRow = rooms.findIndex(cell => cell.name == 'Lab');
-                const labTimes = allCells[rooms[labRow].row].filter(cell => cell.name && cell.column > 0);
+                    const times = allCells[4].filter(cell => cell.name && cell.column > 0);
+                    const rooms = allCells.slice(5).map(arr => arr[0]).flat();
+                    const labRow = rooms.findIndex(cell => cell.name == 'Lab');
+                    const labTimes = allCells[rooms[labRow].row].filter(cell => cell.name && cell.column > 0);
 
-                sortedClasses.push(...classCells.flatMap(cell => extractInfo(cell, rooms, times, labTimes, labRow)).map(info => { info.day = day; return info }).sort((a, b) => {
-                    let startTimeA = DateTime.fromFormat(a.startTime, 'HH:mm');
-                    let startTimeB = DateTime.fromFormat(b.startTime, 'HH:mm');
-                    if (startTimeA < DateTime.fromFormat('8:30', 'H:mm')) startTimeA = startTimeA.plus({ hours: 12 });
-                    if (startTimeB < DateTime.fromFormat('8:30', 'H:mm')) startTimeB = startTimeB.plus({ hours: 12 });
-                    return startTimeA < startTimeB ? -1 : 1
-                }))
+                    sortedClasses.push(...classCells.flatMap(cell => extractInfo(cell, rooms, times, labTimes, labRow)).map(info => { info.day = day; return info }).sort((a, b) => {
+                        let startTimeA = DateTime.fromFormat(a.startTime, 'HH:mm');
+                        let startTimeB = DateTime.fromFormat(b.startTime, 'HH:mm');
+                        if (startTimeA < DateTime.fromFormat('8:30', 'H:mm')) startTimeA = startTimeA.plus({ hours: 12 });
+                        if (startTimeB < DateTime.fromFormat('8:30', 'H:mm')) startTimeB = startTimeB.plus({ hours: 12 });
+                        return startTimeA < startTimeB ? -1 : 1
+                    }))
 
-            }
-
-            document.getElementById('htmlOutput').innerHTML = marked.parse(markdownTable([['Day', 'Class', 'Room', 'Start Time', 'End Time'], ...sortedClasses.map(info => [info.day, info.name, info.room, info.startTime, info.endTime])]));
-
-            const table = document.querySelector('#htmlOutput table');
-            if (!table) return;
-            table.classList.add('table');
-            table.classList.add('table-hover');
-            table.classList.add('table-bordered');
-
-            let haveHighlighted = false;
-            let previousText = '';
-
-            table.firstElementChild.classList.add('table-active');
-
-            for (let i = 0; i < table.lastElementChild.children.length; i++) {
-                const child = table.lastElementChild.children.item(i);
-                if (!previousText) previousText = child.firstElementChild.innerHTML
-                if (previousText != child.firstElementChild.innerHTML) {
-                    if (!haveHighlighted) { child.classList.add('table-active'); haveHighlighted = true }
-                    else haveHighlighted = false
-                } else {
-                    if (haveHighlighted) child.classList.add('table-active');
                 }
-                previousText = child.firstElementChild.innerHTML;
-            }
 
-            document.getElementById('form').classList.add('d-none')
+                document.getElementById('htmlOutput').innerHTML = marked.parse(markdownTable([['Day', 'Class', 'Room', 'Start Time', 'End Time'], ...sortedClasses.map(info => [info.day, info.name, info.room, info.startTime, info.endTime])]));
 
-        })
+                const table = document.querySelector('#htmlOutput table');
+                if (!table) return;
+                table.classList.add('table');
+                table.classList.add('table-hover');
+                table.classList.add('table-bordered');
+
+                let haveHighlighted = false;
+                let previousText = '';
+
+                table.firstElementChild.classList.add('table-active');
+
+                for (let i = 0; i < table.lastElementChild.children.length; i++) {
+                    const child = table.lastElementChild.children.item(i);
+                    if (!previousText) previousText = child.firstElementChild.innerHTML
+                    if (previousText != child.firstElementChild.innerHTML) {
+                        if (!haveHighlighted) { child.classList.add('table-active'); haveHighlighted = true }
+                        else haveHighlighted = false
+                    } else {
+                        if (haveHighlighted) child.classList.add('table-active');
+                    }
+                    previousText = child.firstElementChild.innerHTML;
+                }
+
+                document.getElementById('form').classList.add('d-none')
+
+            })
+
+        });
 
         async function fetchData() {
             try {
@@ -234,5 +226,15 @@
     </script>
 
 </body>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => console.log('Service Worker registered:', reg))
+                .catch(err => console.log('Service Worker registration failed:', err));
+        });
+    }
+</script>
 
 </html>
