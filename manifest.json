@@ -1,0 +1,16 @@
+{
+    "name": "FAST Timetabler",
+    "short_name": "Timetabler",
+    "theme_color": "#ffcbe4",
+    "background_color": "#fa99ca",
+    "display": "standalone",
+    "scope": "/",
+    "description": "An app that generates a timetable based on live data from the google sheets file",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "https://christine.website/static/img/avatar.png",
+            "sizes": "1024x1024"
+        }
+    ]
+}
