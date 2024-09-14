@@ -6,7 +6,8 @@ self.addEventListener('install', event => {
                 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
                 'https://cdnjs.cloudflare.com/ajax/libs/luxon/3.5.0/luxon.min.js',
                 'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
-                'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js'
+                'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
+                'https://esm.sh/markdown-table@3?bundle'
             ]);
         })
     );
