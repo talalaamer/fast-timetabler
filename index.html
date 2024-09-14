@@ -77,6 +77,10 @@
 
         import { markdownTable } from 'https://esm.sh/markdown-table@3?bundle';
 
+        const fetchToast = new bootstrap.Toast(document.getElementById('fetchToast'));
+        const errorToast = new bootstrap.Toast(document.getElementById('errorToast'));
+        const passToast = new bootstrap.Toast(document.getElementById('passToast'));
+
         document.addEventListener('DOMContentLoaded', () => {
 
             const { DateTime } = luxon;
@@ -86,10 +90,6 @@
 
             const API_KEY = 'AIzaSyBBjNimiD3qorayDbeB11a3INt1q3PMtxU'; // Too lazy to setup a way to hide this so it's restricted to only accept requests from this website
             const SPREADSHEET_ID = '1XA76yuFM_4mtkQW__2fryUBMe5EZ6XMWtBHxylhV6k8';
-
-            const fetchToast = new bootstrap.Toast(document.getElementById('fetchToast'));
-            const errorToast = new bootstrap.Toast(document.getElementById('errorToast'));
-            const passToast = new bootstrap.Toast(document.getElementById('passToast'));
 
             const spinner = document.getElementById('progressSpinner');
 
