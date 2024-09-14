@@ -40,46 +40,9 @@
         <div id="htmlOutput"></div>
     </div>
 
-    <div class="position-fixed bottom-0 end-0 p-3 mt-1">
-        <div class="toast align-items-center text-bg-primary border-0" id="fetchToast" role="alert"
-            aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    Fetching data
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
-                    aria-label="Close"></button>
-            </div>
-        </div>
-        <div class="toast align-items-center bg-danger text-white border-0 mt-1" id="errorToast" role="alert"
-            aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    An error occurred while fetching data. Please check your connection and try again.
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
-                    aria-label="Close"></button>
-            </div>
-        </div>
-        <div class="toast align-items-center bg-success text-white border-0 mt-1" id="passToast" role="alert"
-            aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    Data fetched successfully!
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
-                    aria-label="Close"></button>
-            </div>
-        </div>
-    </div>
-
     <script type="module">
 
         import { markdownTable } from 'https://esm.sh/markdown-table@3?bundle';
-
-        const fetchToast = new bootstrap.Toast(document.getElementById('fetchToast'));
-        const errorToast = new bootstrap.Toast(document.getElementById('errorToast'));
-        const passToast = new bootstrap.Toast(document.getElementById('passToast'));
         const spinner = document.getElementById('progressSpinner');
 
         const API_KEY = 'AIzaSyBBjNimiD3qorayDbeB11a3INt1q3PMtxU'; // Too lazy to setup a way to hide this so it's restricted to only accept requests from this website
@@ -93,8 +56,6 @@
             let globalCourses = [];
 
             const degreeSelect = document.getElementById('degreeSelect');
-
-            fetchToast.show();
 
             fetchData().then(data => {
 
@@ -185,13 +146,11 @@
             try {
                 const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?includeGridData=true&key=${API_KEY}`);
                 const data = await response.json();
-                if (data.error) { console.error('Error fetching data:', data.error.message); errorToast.show(); return }
-                passToast.show();
+                if (data.error) { console.error('Error fetching data:', data.error.message); return }
                 spinner.classList.add('d-none');
                 document.getElementById('degreeSelect').disabled = false;
                 return data;
             } catch (error) {
-                errorToast.show()
                 console.error('Error fetching data: ', error)
             }
         }
